@@ -291,7 +291,7 @@ def createKubeVirtualMedia(handle):
         remote_ip_address=address,
         image_name_variable="none",
         image_file_name=filename,
-        image_path="install")
+        image_path=path)
 
     mo_2 = CimcvmediaConfigMountEntry(parent_mo_or_dn=mo,
         mapping_name="kickstartImage",
