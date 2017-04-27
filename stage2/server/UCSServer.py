@@ -17,23 +17,36 @@ def check_values(array, csv):
 
 
 # get the available servers to put in the pool. 
-def selectKubeServers(handle):
-    print "Listing available UCS Servers"
-    filter_string = '(presence, "equipped")' 
-    servers = handle.query_classid("fabricComputeSlotEp", filter_string)
+def select_kube_servers(handle):
+    from ucsmsdk.mometa.compute.ComputeRackUnit import ComputeRackUnit
+    from ucsmsdk.mometa.fabric.FabricComputeSlotEp import FabricComputeSlotEp
+    print "Listing Available UCS Servers"
+    filter_string = '(presence, "equipped")'
+    # get blades
+    blades = handle.query_classid("fabricComputeSlotEp", filter_string)
+    # get all connected rack mount servers.
+    servers = handle.query_classid("computeRackUnit")
+    m = blades + servers
     while True:
-        for i, server in enumerate(servers):
-            print "[%d]: Blade %s/%s type %s" % (i+1, server.chassis_id,  server.rn, server.model)
-        print "Please select servers you want to install Kubernetes on separated by commas"
-        vals = raw_input("(E.g: 2,4,8) : ")
-        if check_values(servers, vals) == True:
-            k8servers = [servers[int(x)-1] for x in vals.split(',')]
+        for i, s in enumerate(m):
+            if type(s) is FabricComputeSlotEp:
+                print "[%d]: Blade %s/%s type %s" % (i+1, s.chassis_id, s.rn, s.model)
+            if type(s) is ComputeRackUnit:
+                print "[%d]: Rack %s type %s" % (i+1, s.rn, s.model)
+        vals = raw_input("(E.g.: 2,4,8): ")
+        if check_values(m, vals) == True:
+            k8servers = [m[int(x)-1] for x in vals.split(',')]
             print "Install Kubernetes on the following servers:"
             for s in k8servers:
-                print "\tBlade %s/%s type %s" % (s.chassis_id, s.rn, s.model)
+                if type(s) is FabricComputeSlotEp:
+                    print "\tBlade %s/%s type %s" % (s.chassis_id, s.rn, s.model)
+                if type(s) is ComputeRackUnit:
+                    print "\tServer %s type %s" % (s.rn, s.model)
+
             yn = raw_input("Is this correct? [N/y]: ")
-            if yn == "y" or yn == "Y": 
+            if yn == "y" or yn == "Y":
                 return k8servers
+
     
 def createKubeBootPolicy(handle):
     print "Creating Kube Boot Policy"
@@ -122,11 +135,16 @@ def addServersToKubePool(handle, servers):
     print "Adding servers to Kubernetes Pool"
     from ucsmsdk.mometa.compute.ComputePool import ComputePool
     from ucsmsdk.mometa.compute.ComputePooledSlot import ComputePooledSlot
+    from ucsmsdk.mometa.compute.ComputePooledRackUnit import ComputePooledRackUnit
+    from ucsmsdk.mometa.compute.ComputeRackUnit import ComputeRackUnit
+    from ucsmsdk.mometa.fabric.FabricComputeSlotEp import FabricComputeSlotEp
     mo = ComputePool(parent_mo_or_dn="org-root", policy_owner="local", name="Kubernetes", descr="")
     for s in servers: 
-        ComputePooledSlot(parent_mo_or_dn=mo, slot_id=re.sub("slot-","", s.slot_id), chassis_id=str(s.chassis_id))
+        if type(s) is FabricComputeSlotEp:
+            ComputePooledSlot(parent_mo_or_dn=mo, slot_id=re.sub("slot-","", s.slot_id), chassis_id=str(s.chassis_id))
+        if type(s) is ComputeRackUnit:
+            ComputePooledRackUnit(parent_mo_or_dn=mo, id=re.sub("rack-unit-","", s.rn))
         handle.add_mo(mo, True)
-    #handle.commit()
     try: 
         handle.commit()
     except UcsException as err:
@@ -332,7 +350,7 @@ def createKubeServers(handle):
     createKubeUUIDPools(handle)
     createKubeServerPool(handle)
     createKubeVirtualMedia(handle)
-    servers = selectKubeServers(handle) 
+    servers = select_kube_servers(handle) 
     addServersToKubePool(handle, servers)
     createServiceProfileTemplate(handle)
     createServers(handle, servers)
