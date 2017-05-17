@@ -99,13 +99,13 @@ def deleteLanConnPolicy(handle):
     except AttributeError:
         print "\talready deleted"
 
-def createKubeNetworking(handle):
+def createKubeNetworking(handle, org):
     vlan = listVLANs(handle) 
     createKubeMacs(handle)
     createVNICTemplates(handle, vlan.name)
     createLanConnPolicy(handle)
 
-def deleteKubeNetworking(handle):
+def deleteKubeNetworking(handle, org):
     deleteLanConnPolicy(handle)
     deleteVNICTemplates(handle)
     deleteKubeMacs(handle) 

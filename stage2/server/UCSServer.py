@@ -343,7 +343,7 @@ def deleteScrubPolicy(handle):
         print "\talready deleted"
 
 
-def createKubeServers(handle):
+def createKubeServers(handle, org):
     createKubeBootPolicy(handle)
     createKubeLocalDiskPolicy(handle)
     createScrubPolicy(handle)
@@ -355,7 +355,7 @@ def createKubeServers(handle):
     createServiceProfileTemplate(handle)
     createServers(handle, servers)
 
-def deleteKubeServers(handle):
+def deleteKubeServers(handle, org):
     deleteServers(handle)
     deleteServiceProfileTemplate(handle)
     deleteKubeServerPool(handle)
